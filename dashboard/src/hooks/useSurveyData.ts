@@ -26,10 +26,17 @@ export interface ComparisonMonth {
   categorySummary: CategorySummary[];
 }
 
+export interface MonthOption {
+  year: number;
+  month: number;
+  label: string;
+}
+
 export function useSurveyData() {
   const [categories, setCategories] = useState<CategoryData[]>([]);
   const [clinicId, setClinicId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [availableMonths, setAvailableMonths] = useState<MonthOption[]>([]);
 
   // Fetch clinic + categories on mount
   useEffect(() => {
@@ -59,6 +66,29 @@ export function useSurveyData() {
             name: c.name,
             sort_order: c.sort_order,
           })));
+        }
+
+        // Fetch distinct months that have data
+        const { data: dates } = await supabase
+          .from('daily_surveys')
+          .select('survey_date')
+          .eq('clinic_id', clinic.id)
+          .order('survey_date', { ascending: false });
+
+        if (dates && dates.length > 0) {
+          const monthSet = new Set<string>();
+          const months: MonthOption[] = [];
+          for (const row of dates) {
+            const d = new Date(row.survey_date);
+            const key = `${d.getFullYear()}-${d.getMonth() + 1}`;
+            if (!monthSet.has(key)) {
+              monthSet.add(key);
+              const y = d.getFullYear();
+              const m = d.getMonth() + 1;
+              months.push({ year: y, month: m, label: `${y}年${m}月` });
+            }
+          }
+          setAvailableMonths(months);
         }
       } finally {
         setLoading(false);
@@ -200,6 +230,7 @@ export function useSurveyData() {
   return {
     categories,
     loading,
+    availableMonths,
     getSurveysByMonth,
     getMonthlyStats,
     getComparisonData,

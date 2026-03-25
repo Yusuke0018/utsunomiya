@@ -25,9 +25,11 @@ export function getMonthOptions(
 ): { year: number; month: number; label: string }[] {
   const options: { year: number; month: number; label: string }[] = [];
   const now = new Date();
+  const earliest = new Date(2026, 1, 1); // 2026年2月が最古
 
   for (let i = 0; i < count; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    if (d < earliest) break;
     const year = d.getFullYear();
     const month = d.getMonth() + 1;
     options.push({

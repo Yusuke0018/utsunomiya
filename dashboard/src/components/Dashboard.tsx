@@ -24,7 +24,8 @@ import {
   Cell,
 } from 'recharts';
 import { useSurveyData } from '@/hooks/useSurveyData';
-import { getMonthOptions, CATEGORY_COLORS, calculateGrowthRate } from '@/lib/utils';
+import type { MonthOption } from '@/hooks/useSurveyData';
+import { CATEGORY_COLORS, calculateGrowthRate } from '@/lib/utils';
 import OverviewTab from '@/components/tabs/OverviewTab';
 import type { CategorySummary, MonthlyStats } from '@/types/survey';
 import type { DaySurveyEntry, ComparisonMonth } from '@/hooks/useSurveyData';
@@ -127,27 +128,34 @@ function SimpleTooltip({
 
 // ── Dashboard ────────────────────────────────────────────
 export default function Dashboard() {
-  const monthOptions = useMemo(() => getMonthOptions(18), []);
-  const [selectedMonth, setSelectedMonth] = useState(monthOptions[0]);
+  const [selectedMonth, setSelectedMonth] = useState<MonthOption | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('overview');
 
   const {
     categories,
     loading: categoriesLoading,
+    availableMonths,
     getSurveysByMonth,
     getMonthlyStats,
     getComparisonData,
   } = useSurveyData();
+
+  // Auto-select most recent month when availableMonths loads
+  useEffect(() => {
+    if (availableMonths.length > 0 && !selectedMonth) {
+      setSelectedMonth(availableMonths[0]);
+    }
+  }, [availableMonths, selectedMonth]);
 
   // ── Stats state (loaded on selectedMonth change) ─────
   const [stats, setStats] = useState<MonthlyStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
-    if (categoriesLoading) return;
+    if (categoriesLoading || !selectedMonth) return;
     let cancelled = false;
     setStatsLoading(true);
-    getMonthlyStats(selectedMonth.year, selectedMonth.month).then((data) => {
+    getMonthlyStats(selectedMonth!.year, selectedMonth!.month).then((data) => {
       if (!cancelled) {
         setStats(data);
         setStatsLoading(false);
@@ -156,7 +164,7 @@ export default function Dashboard() {
     return () => { cancelled = true; };
   }, [selectedMonth, categoriesLoading, getMonthlyStats]);
 
-  const monthLabel = selectedMonth.label;
+  const monthLabel = selectedMonth?.label ?? '';
 
   // ── Full-page loading while categories load ──────────
   if (categoriesLoading) {
@@ -166,6 +174,24 @@ export default function Dashboard() {
       </div>
     );
   }
+
+  // ── No data at all ────────────────────────────────────
+  if (!categoriesLoading && availableMonths.length === 0) {
+    return (
+      <div className="mx-auto min-h-screen max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <header className="mb-8">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">来院理由アンケート</h1>
+          <p className="mt-1 text-sm text-slate-500">うつのみやLA泌尿器科クリニック</p>
+        </header>
+        <div className="flex flex-col items-center justify-center rounded-xl bg-white py-20 shadow-sm">
+          <p className="text-lg text-slate-400">まだデータがありません</p>
+          <p className="mt-2 text-sm text-slate-300">Chrome拡張からデータを送信すると、ここに表示されます</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!selectedMonth) return <LoadingSpinner />;
 
   // ── Tab content ────────────────────────────────────────
   function renderTabContent() {
@@ -197,7 +223,7 @@ export default function Dashboard() {
     useEffect(() => {
       let cancelled = false;
       setLoading(true);
-      getSurveysByMonth(selectedMonth.year, selectedMonth.month).then((data) => {
+      getSurveysByMonth(selectedMonth!.year, selectedMonth!.month).then((data) => {
         if (!cancelled) {
           setEntries(data);
           setLoading(false);
@@ -480,8 +506,8 @@ export default function Dashboard() {
     useEffect(() => {
       let cancelled = false;
       setYoyLoading(true);
-      const y = selectedMonth.year - 1;
-      const m = selectedMonth.month;
+      const y = selectedMonth!.year - 1;
+      const m = selectedMonth!.month;
       getMonthlyStats(y, m).then((s) => {
         if (!cancelled) {
           setLastYearSameMonth({
@@ -503,7 +529,7 @@ export default function Dashboard() {
     if (comparison.length === 0) return <EmptyState />;
 
     const barData = comparison.map((m) => ({
-      label: m.year === selectedMonth.year ? `${m.month}月` : `${m.year}/${m.month}`,
+      label: m.year === selectedMonth!.year ? `${m.month}月` : `${m.year}/${m.month}`,
       total: m.total,
     }));
 
@@ -558,7 +584,7 @@ export default function Dashboard() {
         {/* YoY comparison */}
         <div className="rounded-xl bg-white p-6 shadow-sm">
           <h3 className="mb-4 text-base font-semibold text-slate-800">
-            昨年同月比較（{selectedMonth.label} vs {lastYearSameMonth.label}）
+            昨年同月比較（{selectedMonth!.label} vs {lastYearSameMonth.label}）
           </h3>
           <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
             <div className="rounded-lg bg-blue-50 p-3">
@@ -593,7 +619,7 @@ export default function Dashboard() {
               <thead>
                 <tr className="border-b-2 border-slate-200 bg-slate-50">
                   <th className="whitespace-nowrap px-3 py-2 font-semibold text-slate-600">カテゴリ</th>
-                  <th className="whitespace-nowrap px-3 py-2 text-right font-semibold text-blue-600">{selectedMonth.label}</th>
+                  <th className="whitespace-nowrap px-3 py-2 text-right font-semibold text-blue-600">{selectedMonth!.label}</th>
                   <th className="whitespace-nowrap px-3 py-2 text-right font-semibold text-slate-500">{lastYearSameMonth.label}</th>
                   <th className="whitespace-nowrap px-3 py-2 text-right font-semibold text-slate-600">増減</th>
                   <th className="whitespace-nowrap px-3 py-2 text-right font-semibold text-slate-600">増減率</th>
@@ -654,7 +680,7 @@ export default function Dashboard() {
                       key={m.label}
                       className="whitespace-nowrap px-3 py-2 text-right font-semibold text-slate-600"
                     >
-                      {m.year === selectedMonth.year ? `${m.month}月` : `${m.year}/${m.month}`}
+                      {m.year === selectedMonth!.year ? `${m.month}月` : `${m.year}/${m.month}`}
                     </th>
                   ))}
                   <th className="whitespace-nowrap px-3 py-2 text-right font-semibold text-slate-600">増減</th>
@@ -951,17 +977,17 @@ export default function Dashboard() {
           {/* Month selector */}
           <div className="relative">
             <select
-              value={`${selectedMonth.year}-${selectedMonth.month}`}
+              value={selectedMonth ? `${selectedMonth!.year}-${selectedMonth!.month}` : ''}
               onChange={(e) => {
                 const [y, m] = e.target.value.split('-').map(Number);
-                const found = monthOptions.find(
+                const found = availableMonths.find(
                   (o) => o.year === y && o.month === m
                 );
                 if (found) setSelectedMonth(found);
               }}
               className="appearance-none rounded-lg border border-slate-200 bg-white py-2 pl-4 pr-10 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             >
-              {monthOptions.map((opt) => (
+              {availableMonths.map((opt) => (
                 <option key={`${opt.year}-${opt.month}`} value={`${opt.year}-${opt.month}`}>
                   {opt.label}
                 </option>
