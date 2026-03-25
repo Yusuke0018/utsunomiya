@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "デジカル受付一覧から来院理由アンケートを集計します",
   "permissions": ["storage", "activeTab"],
-  "host_permissions": ["https://*.supabase.co/*"],
+  "host_permissions": ["https://*.supabase.co/*", "https://script.google.com/*"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -16,7 +16,7 @@
   "options_page": "options.html",
   "content_scripts": [
     {
-      "matches": ["https://*.digital-clinic.jp/*", "https://*.digicla.com/*"],
+      "matches": ["https://digikar.jp/reception/*"],
       "js": ["content.js"],
       "css": ["content.css"]
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   LayoutDashboard,
   CalendarDays,
@@ -23,10 +23,11 @@ import {
   Legend,
   Cell,
 } from 'recharts';
-import { useDemoData } from '@/hooks/useDemoData';
+import { useSurveyData } from '@/hooks/useSurveyData';
 import { getMonthOptions, CATEGORY_COLORS, calculateGrowthRate } from '@/lib/utils';
 import OverviewTab from '@/components/tabs/OverviewTab';
-import type { CategorySummary } from '@/types/survey';
+import type { CategorySummary, MonthlyStats } from '@/types/survey';
+import type { DaySurveyEntry, ComparisonMonth } from '@/hooks/useSurveyData';
 
 // ── Tab definitions ──────────────────────────────────────
 const TABS = [
@@ -38,6 +39,24 @@ const TABS = [
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
+
+// ── Loading spinner ──────────────────────────────────────
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
+    </div>
+  );
+}
+
+// ── Empty state ──────────────────────────────────────────
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+      <p>データがありません</p>
+    </div>
+  );
+}
 
 // ── Tooltip types ────────────────────────────────────────
 interface DailyTooltipPayloadItem {
@@ -114,22 +133,46 @@ export default function Dashboard() {
 
   const {
     categories,
+    loading: categoriesLoading,
     getSurveysByMonth,
     getMonthlyStats,
     getComparisonData,
-  } = useDemoData();
+  } = useSurveyData();
 
-  const stats = useMemo(
-    () => getMonthlyStats(selectedMonth.year, selectedMonth.month),
-    [getMonthlyStats, selectedMonth]
-  );
+  // ── Stats state (loaded on selectedMonth change) ─────
+  const [stats, setStats] = useState<MonthlyStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  useEffect(() => {
+    if (categoriesLoading) return;
+    let cancelled = false;
+    setStatsLoading(true);
+    getMonthlyStats(selectedMonth.year, selectedMonth.month).then((data) => {
+      if (!cancelled) {
+        setStats(data);
+        setStatsLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [selectedMonth, categoriesLoading, getMonthlyStats]);
 
   const monthLabel = selectedMonth.label;
+
+  // ── Full-page loading while categories load ──────────
+  if (categoriesLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
+      </div>
+    );
+  }
 
   // ── Tab content ────────────────────────────────────────
   function renderTabContent() {
     switch (activeTab) {
       case 'overview':
+        if (statsLoading || !stats) return <LoadingSpinner />;
+        if (stats.totalResponses === 0) return <EmptyState />;
         return <OverviewTab stats={stats} monthLabel={monthLabel} />;
       case 'daily':
         return <DailyTab />;
@@ -148,10 +191,23 @@ export default function Dashboard() {
   function DailyTab() {
     const DAY_NAMES = ['日', '月', '火', '水', '木', '金', '土'];
 
-    const entries = useMemo(
-      () => getSurveysByMonth(selectedMonth.year, selectedMonth.month),
-      [selectedMonth]
-    );
+    const [entries, setEntries] = useState<DaySurveyEntry[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+      let cancelled = false;
+      setLoading(true);
+      getSurveysByMonth(selectedMonth.year, selectedMonth.month).then((data) => {
+        if (!cancelled) {
+          setEntries(data);
+          setLoading(false);
+        }
+      });
+      return () => { cancelled = true; };
+    }, [selectedMonth]);
+
+    if (loading) return <LoadingSpinner />;
+    if (entries.length === 0) return <EmptyState />;
 
     // Chart data - weekdays only
     const weekdayEntries = entries.filter((e) => {
@@ -170,20 +226,18 @@ export default function Dashboard() {
     });
 
     // Monthly totals
-    const monthTotals = useMemo(() => {
-      const totals: Record<string, number> = {};
-      for (const cat of categories) {
-        totals[cat.id] = 0;
+    const totals: Record<string, number> = {};
+    for (const cat of categories) {
+      totals[cat.id] = 0;
+    }
+    let grandTotal = 0;
+    for (const entry of weekdayEntries) {
+      for (const cat of entry.categories) {
+        totals[cat.id] = (totals[cat.id] ?? 0) + cat.count;
+        grandTotal += cat.count;
       }
-      let grandTotal = 0;
-      for (const entry of weekdayEntries) {
-        for (const cat of entry.categories) {
-          totals[cat.id] = (totals[cat.id] ?? 0) + cat.count;
-          grandTotal += cat.count;
-        }
-      }
-      return { byCategory: totals, grand: grandTotal };
-    }, [weekdayEntries, categories]);
+    }
+    const monthTotals = { byCategory: totals, grand: grandTotal };
 
     return (
       <div className="space-y-6">
@@ -305,7 +359,23 @@ export default function Dashboard() {
 
   // ── Trend tab ──────────────────────────────────────────
   function TrendTab() {
-    const comparison = useMemo(() => getComparisonData(6), []);
+    const [comparison, setComparison] = useState<ComparisonMonth[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+      let cancelled = false;
+      setLoading(true);
+      getComparisonData(6).then((data) => {
+        if (!cancelled) {
+          setComparison(data);
+          setLoading(false);
+        }
+      });
+      return () => { cancelled = true; };
+    }, []);
+
+    if (loading || statsLoading || !stats) return <LoadingSpinner />;
+    if (comparison.length === 0) return <EmptyState />;
 
     const trendData = comparison.map((m) => ({
       label: `${m.month}月`,
@@ -364,7 +434,6 @@ export default function Dashboard() {
               {topCategories.map((cat, i) => (
                 <Line
                   key={cat.categoryId}
-
                   dataKey={cat.name}
                   stroke={CATEGORY_COLORS[i]}
                   strokeWidth={2}
@@ -381,32 +450,65 @@ export default function Dashboard() {
   // ── Compare tab ────────────────────────────────────────
   function CompareTab() {
     const [compareRange, setCompareRange] = useState<3 | 6 | 12>(6);
-    const comparison = useMemo(() => getComparisonData(compareRange), [compareRange, getComparisonData]);
+    const [comparison, setComparison] = useState<ComparisonMonth[]>([]);
+    const [comparisonLoading, setComparisonLoading] = useState(true);
+
+    // YoY data
+    const [lastYearSameMonth, setLastYearSameMonth] = useState<{
+      year: number;
+      month: number;
+      label: string;
+      total: number;
+      categorySummary: CategorySummary[];
+    } | null>(null);
+    const [yoyLoading, setYoyLoading] = useState(true);
+
+    // Fetch comparison data when range changes
+    useEffect(() => {
+      let cancelled = false;
+      setComparisonLoading(true);
+      getComparisonData(compareRange).then((data) => {
+        if (!cancelled) {
+          setComparison(data);
+          setComparisonLoading(false);
+        }
+      });
+      return () => { cancelled = true; };
+    }, [compareRange, getComparisonData]);
+
+    // Fetch YoY data when selectedMonth changes
+    useEffect(() => {
+      let cancelled = false;
+      setYoyLoading(true);
+      const y = selectedMonth.year - 1;
+      const m = selectedMonth.month;
+      getMonthlyStats(y, m).then((s) => {
+        if (!cancelled) {
+          setLastYearSameMonth({
+            year: y,
+            month: m,
+            label: `${y}年${m}月`,
+            total: s.totalResponses,
+            categorySummary: s.categorySummary,
+          });
+          setYoyLoading(false);
+        }
+      });
+      return () => { cancelled = true; };
+    }, [selectedMonth, getMonthlyStats]);
+
+    if (comparisonLoading || yoyLoading || statsLoading || !stats || !lastYearSameMonth) {
+      return <LoadingSpinner />;
+    }
+    if (comparison.length === 0) return <EmptyState />;
 
     const barData = comparison.map((m) => ({
       label: m.year === selectedMonth.year ? `${m.month}月` : `${m.year}/${m.month}`,
       total: m.total,
     }));
 
-    // YoY comparison: current month vs same month last year
     const currentMonthData = comparison[comparison.length - 1];
-    const lastYearSameMonth = useMemo(() => {
-      const y = selectedMonth.year - 1;
-      const m = selectedMonth.month;
-      const s = getMonthlyStats(y, m);
-      return {
-        year: y,
-        month: m,
-        label: `${y}年${m}月`,
-        total: s.totalResponses,
-        categorySummary: s.categorySummary,
-      };
-    }, [selectedMonth, getMonthlyStats]);
-
-    // All categories for the table (not just top 8)
     const allCats = stats.categorySummary;
-
-    // Compute first→last period change
     const firstMonth = comparison[0];
     const lastMonth = comparison[comparison.length - 1];
 
@@ -613,8 +715,24 @@ export default function Dashboard() {
 
   // ── Insight tab ────────────────────────────────────────
   function InsightTab() {
-    const comparison = useMemo(() => getComparisonData(3), []);
-    const currentMonth = comparison[comparison.length - 1];
+    const [comparison, setComparison] = useState<ComparisonMonth[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+      let cancelled = false;
+      setLoading(true);
+      getComparisonData(3).then((data) => {
+        if (!cancelled) {
+          setComparison(data);
+          setLoading(false);
+        }
+      });
+      return () => { cancelled = true; };
+    }, []);
+
+    if (loading || statsLoading || !stats) return <LoadingSpinner />;
+    if (stats.totalResponses === 0) return <EmptyState />;
+
     const prevMonth = comparison.length > 1 ? comparison[comparison.length - 2] : null;
 
     // Find biggest growers and decliners
@@ -883,7 +1001,7 @@ export default function Dashboard() {
 
       {/* ── Footer ──────────────────────────────────────── */}
       <footer className="mt-12 border-t border-slate-200 pt-6 text-center text-xs text-slate-400">
-        <p>デモデータを表示中 --- 実際のデータは Supabase 連携後に反映されます</p>
+        <p>Supabase からリアルタイムデータを表示中</p>
       </footer>
     </div>
   );

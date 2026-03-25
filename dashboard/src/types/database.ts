@@ -20,6 +20,7 @@ export interface Database {
           code?: string;
           created_at?: string;
         };
+        Relationships: [];
       };
       categories: {
         Row: {
@@ -52,6 +53,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       category_mappings: {
         Row: {
@@ -75,6 +77,7 @@ export interface Database {
           mapped_at?: string;
           reason?: string | null;
         };
+        Relationships: [];
       };
       daily_surveys: {
         Row: {
@@ -104,6 +107,7 @@ export interface Database {
           submitted_at?: string;
           submitted_by?: string | null;
         };
+        Relationships: [];
       };
       survey_edits: {
         Row: {
@@ -130,6 +134,7 @@ export interface Database {
           reason?: string | null;
           edited_at?: string;
         };
+        Relationships: [];
       };
     };
     Views: Record<string, never>;
