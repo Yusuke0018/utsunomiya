@@ -31,8 +31,8 @@
       chrome.storage.sync.get(
         ['supabaseUrl', 'supabaseKey', 'gasUrl', 'clinicCode', 'categories'],
         (result) => {
-          $supabaseUrl.value = result.supabaseUrl || '';
-          $supabaseKey.value = result.supabaseKey || '';
+          $supabaseUrl.value = result.supabaseUrl || 'https://dstucelzcwaihytjllqz.supabase.co';
+          $supabaseKey.value = result.supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzdHVjZWx6Y3dhaWh5dGpsbHF6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDQ0MzY5MSwiZXhwIjoyMDkwMDE5NjkxfQ.9pgx54dvpkyED1bRPiv8fffeFuohIdvigU82VKvwMUM';
           $gasUrl.value = result.gasUrl || '';
           $clinicCode.value = result.clinicCode || 'utsunomiya-la';
           categories = result.categories || [];
