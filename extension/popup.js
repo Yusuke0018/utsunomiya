@@ -23,6 +23,7 @@
   const $statusSection = document.getElementById('statusSection');
   const $statusMessage = document.getElementById('statusMessage');
   const $loadingOverlay = document.getElementById('loadingOverlay');
+  const $deleteBtn = document.getElementById('deleteBtn');
   const $openOptions = document.getElementById('openOptions');
 
   // ---- Initialisation ----
@@ -71,7 +72,7 @@
     if (config.supabaseUrl && config.supabaseKey) {
       try {
         const res = await fetch(
-          `${config.supabaseUrl}/rest/v1/survey_categories?is_active=eq.true&order=sort_order.asc`,
+          `${config.supabaseUrl}/rest/v1/categories?is_active=eq.true&order=sort_order.asc`,
           {
             headers: {
               apikey: config.supabaseKey,
@@ -100,14 +101,18 @@
 
     // Default categories
     categories = [
-      { number: 1, name: 'ホームページ', is_active: true },
-      { number: 2, name: '通りがかり', is_active: true },
-      { number: 3, name: '看板', is_active: true },
-      { number: 4, name: '紹介', is_active: true },
-      { number: 5, name: 'SNS', is_active: true },
-      { number: 6, name: 'Google検索', is_active: true },
-      { number: 7, name: 'Googleマップ', is_active: true },
-      { number: 8, name: 'その他', is_active: true },
+      { number: 1, name: 'Google', is_active: true },
+      { number: 2, name: 'Yahoo', is_active: true },
+      { number: 3, name: 'AI', is_active: true },
+      { number: 4, name: 'Youtube', is_active: true },
+      { number: 5, name: '家族・友人の紹介', is_active: true },
+      { number: 6, name: '看板・のぼり', is_active: true },
+      { number: 7, name: 'チラシ', is_active: true },
+      { number: 8, name: '新聞折込', is_active: true },
+      { number: 9, name: '情報誌', is_active: true },
+      { number: 10, name: 'ラジオ', is_active: true },
+      { number: 11, name: '医療機関からの紹介', is_active: true },
+      { number: 12, name: 'その他', is_active: true },
     ];
     chrome.storage.sync.set({ categories });
   }
@@ -116,6 +121,7 @@
   function bindEvents() {
     $scanBtn.addEventListener('click', handleScan);
     $submitBtn.addEventListener('click', handleSubmit);
+    $deleteBtn.addEventListener('click', handleDelete);
     $openOptions.addEventListener('click', (e) => {
       e.preventDefault();
       chrome.runtime.openOptionsPage();
@@ -275,6 +281,30 @@
       showStatus('partial', parts.join('\n'), true);
     } else if (hasError) {
       showStatus('error', parts.join('\n'), true);
+    }
+  }
+
+  // ---- Delete ----
+  async function handleDelete() {
+    const date = $surveyDate.value;
+    if (!date) {
+      showStatus('error', '日付を選択してください。');
+      return;
+    }
+    if (!confirm(`${date} のデータを削除しますか？\nこの操作は取り消せません。`)) return;
+
+    $deleteBtn.disabled = true;
+    showLoading();
+    hideStatus();
+
+    try {
+      await deleteFromSupabase(config, date);
+      showStatus('success', `${date} のデータを削除しました。`);
+    } catch (err) {
+      showStatus('error', `削除失敗: ${err.message}`);
+    } finally {
+      $deleteBtn.disabled = false;
+      hideLoading();
     }
   }
 
