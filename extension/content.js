@@ -13,11 +13,24 @@
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message.action === 'scan') {
       const result = scanTable();
+      result.date = getDateFromPage();
       sendResponse(result);
     }
-    // Return true to allow async sendResponse if needed in future
     return true;
   });
+
+  // ---- Date Extraction from DOM ----
+  function getDateFromPage() {
+    const buttons = document.querySelectorAll('button');
+    for (const btn of buttons) {
+      const text = btn.textContent.trim();
+      const m = text.match(/(\d{4})\/(\d{2})\/(\d{2})/);
+      if (m) {
+        return `${m[1]}-${m[2]}-${m[3]}`;
+      }
+    }
+    return null;
+  }
 
   // ---- Table Scanner ----
   function scanTable() {

@@ -151,8 +151,12 @@
 
       if (response && response.success) {
         currentCounts = response.counts || {};
+        if (response.date) {
+          $surveyDate.value = response.date;
+        }
         renderResults();
-        showStatus('info', `${response.totalRows}行をスキャン、${response.matchedRows}件のタグを検出しました。`);
+        const dateLabel = response.date || $surveyDate.value;
+        showStatus('info', `${dateLabel}：${response.totalRows}行スキャン、${response.matchedRows}件検出`);
       } else {
         const errMsg = response?.error || 'テーブルが見つかりません。デジカルの受付一覧画面を開いてください。';
         showStatus('error', errMsg);
