@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="popup.css">
+  <title>来院理由アンケート集計</title>
+</head>
+<body>
+  <div class="popup-container">
+    <header class="popup-header">
+      <h1>来院理由アンケート集計</h1>
+      <p class="clinic-code" id="clinicCode"></p>
+    </header>
+
+    <section class="date-section">
+      <label for="surveyDate">集計日</label>
+      <input type="date" id="surveyDate">
+    </section>
+
+    <section class="action-section">
+      <button id="scanBtn" class="btn btn-primary btn-full">
+        <span class="btn-icon">&#128269;</span>
+        テーブルから集計
+      </button>
+    </section>
+
+    <section class="results-section" id="resultsSection" style="display:none;">
+      <h2>集計結果</h2>
+      <div id="categoryList" class="category-list"></div>
+      <div class="total-row">
+        <span>合計</span>
+        <span id="totalCount" class="total-count">0</span>
+      </div>
+    </section>
+
+    <section class="submit-section" id="submitSection" style="display:none;">
+      <button id="submitBtn" class="btn btn-submit btn-full">
+        <span class="btn-icon">&#9993;</span>
+        送信
+      </button>
+    </section>
+
+    <section class="status-section" id="statusSection" style="display:none;">
+      <div id="statusMessage" class="status-message"></div>
+    </section>
+
+    <div class="loading-overlay" id="loadingOverlay" style="display:none;">
+      <div class="spinner"></div>
+      <p class="loading-text">処理中...</p>
+    </div>
+
+    <footer class="popup-footer">
+      <a href="#" id="openOptions">設定</a>
+    </footer>
+  </div>
+
+  <script src="lib/api.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

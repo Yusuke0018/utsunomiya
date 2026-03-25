@@ -1,0 +1,23 @@
+/* ============================================
+   Content Script Styles - Highlight for matched memo cells
+   ============================================ */
+
+.survey-ext-highlight {
+  background-color: rgba(59, 130, 246, 0.12) !important;
+  outline: 2px solid rgba(59, 130, 246, 0.4);
+  outline-offset: -1px;
+  border-radius: 2px;
+  transition: background-color 0.3s ease, outline-color 0.3s ease;
+  animation: survey-ext-pulse 0.6s ease-out;
+}
+
+@keyframes survey-ext-pulse {
+  0% {
+    background-color: rgba(59, 130, 246, 0.3);
+    outline-color: rgba(59, 130, 246, 0.7);
+  }
+  100% {
+    background-color: rgba(59, 130, 246, 0.12);
+    outline-color: rgba(59, 130, 246, 0.4);
+  }
+}

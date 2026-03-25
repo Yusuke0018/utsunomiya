@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="options.css">
+  <title>設定 - 来院理由アンケート集計</title>
+</head>
+<body>
+  <div class="options-container">
+    <header class="options-header">
+      <h1>来院理由アンケート集計 - 設定</h1>
+    </header>
+
+    <main class="options-main">
+      <!-- API Settings -->
+      <section class="settings-section">
+        <h2>API 設定</h2>
+
+        <div class="field">
+          <label for="supabaseUrl">Supabase URL</label>
+          <input type="url" id="supabaseUrl" placeholder="https://xxxxx.supabase.co">
+          <p class="field-hint">Supabase プロジェクトの URL</p>
+        </div>
+
+        <div class="field">
+          <label for="supabaseKey">Supabase Service Role Key</label>
+          <div class="password-field">
+            <input type="password" id="supabaseKey" placeholder="eyJhbGciOi...">
+            <button type="button" class="toggle-visibility" data-target="supabaseKey" aria-label="パスワードの表示切替">
+              <span class="eye-icon">&#128065;</span>
+            </button>
+          </div>
+          <p class="field-hint">INSERT 権限のある Service Role Key</p>
+        </div>
+
+        <div class="field">
+          <label for="gasUrl">GAS Web App URL</label>
+          <input type="url" id="gasUrl" placeholder="https://script.google.com/macros/s/.../exec">
+          <p class="field-hint">Google Apps Script Web App の公開 URL</p>
+        </div>
+
+        <div class="field">
+          <label for="clinicCode">クリニックコード</label>
+          <input type="text" id="clinicCode" placeholder="utsunomiya-la">
+          <p class="field-hint">クリニックの識別コード</p>
+        </div>
+      </section>
+
+      <!-- Category Management -->
+      <section class="settings-section">
+        <h2>カテゴリ管理</h2>
+
+        <div id="categoryListContainer" class="category-list-container">
+          <!-- Populated by JS -->
+        </div>
+
+        <div class="add-category">
+          <input type="number" id="newCatNumber" placeholder="#" min="1" max="99" class="cat-number-input">
+          <input type="text" id="newCatName" placeholder="カテゴリ名" class="cat-name-input">
+          <button type="button" id="addCatBtn" class="btn btn-secondary btn-small">追加</button>
+        </div>
+      </section>
+
+      <!-- Actions -->
+      <section class="actions-section">
+        <button type="button" id="saveBtn" class="btn btn-primary">設定を保存</button>
+        <div id="saveStatus" class="save-status"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
