@@ -380,30 +380,68 @@ export default function Dashboard() {
 
   // ── Compare tab ────────────────────────────────────────
   function CompareTab() {
-    const comparison = useMemo(() => getComparisonData(6), []);
+    const [compareRange, setCompareRange] = useState<3 | 6 | 12>(6);
+    const comparison = useMemo(() => getComparisonData(compareRange), [compareRange, getComparisonData]);
 
     const barData = comparison.map((m) => ({
-      label: `${m.month}月`,
+      label: m.year === selectedMonth.year ? `${m.month}月` : `${m.year}/${m.month}`,
       total: m.total,
     }));
 
-    // Category comparison table
-    const topCats = stats.categorySummary.slice(0, 8);
+    // YoY comparison: current month vs same month last year
+    const currentMonthData = comparison[comparison.length - 1];
+    const lastYearSameMonth = useMemo(() => {
+      const y = selectedMonth.year - 1;
+      const m = selectedMonth.month;
+      const s = getMonthlyStats(y, m);
+      return {
+        year: y,
+        month: m,
+        label: `${y}年${m}月`,
+        total: s.totalResponses,
+        categorySummary: s.categorySummary,
+      };
+    }, [selectedMonth, getMonthlyStats]);
+
+    // All categories for the table (not just top 8)
+    const allCats = stats.categorySummary;
+
+    // Compute first→last period change
+    const firstMonth = comparison[0];
+    const lastMonth = comparison[comparison.length - 1];
 
     return (
       <div className="space-y-6">
+        {/* Period selector */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-slate-600">期間:</span>
+          {([3, 6, 12] as const).map((n) => (
+            <button
+              key={n}
+              onClick={() => setCompareRange(n)}
+              className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-all ${
+                compareRange === n
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-white text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              {n}ヶ月
+            </button>
+          ))}
+        </div>
+
         {/* Monthly comparison bar */}
         <div className="rounded-xl bg-white p-6 shadow-sm">
           <h3 className="mb-4 text-base font-semibold text-slate-800">
-            月別比較（過去6ヶ月）
+            月別比較（過去{compareRange}ヶ月）
           </h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={barData} margin={{ top: 8, right: 24, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="label" tick={{ fontSize: 12 }} stroke="#94a3b8" />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="#94a3b8" />
               <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" />
               <Tooltip content={<SimpleTooltip />} />
-              <Bar dataKey="total" name="合計" radius={[6, 6, 0, 0]} barSize={40}>
+              <Bar dataKey="total" name="合計" radius={[6, 6, 0, 0]} barSize={compareRange <= 6 ? 40 : 24}>
                 {barData.map((_, i) => (
                   <Cell
                     key={i}
@@ -415,6 +453,88 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
 
+        {/* YoY comparison */}
+        <div className="rounded-xl bg-white p-6 shadow-sm">
+          <h3 className="mb-4 text-base font-semibold text-slate-800">
+            昨年同月比較（{selectedMonth.label} vs {lastYearSameMonth.label}）
+          </h3>
+          <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div className="rounded-lg bg-blue-50 p-3">
+              <p className="text-xs text-blue-600">今年</p>
+              <p className="text-xl font-bold text-blue-800">{currentMonthData?.total.toLocaleString()}</p>
+            </div>
+            <div className="rounded-lg bg-slate-50 p-3">
+              <p className="text-xs text-slate-500">昨年</p>
+              <p className="text-xl font-bold text-slate-700">{lastYearSameMonth.total.toLocaleString()}</p>
+            </div>
+            <div className="rounded-lg bg-slate-50 p-3">
+              <p className="text-xs text-slate-500">増減</p>
+              <p className={`text-xl font-bold ${(currentMonthData?.total ?? 0) - lastYearSameMonth.total >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                {(currentMonthData?.total ?? 0) - lastYearSameMonth.total > 0 ? '+' : ''}
+                {(currentMonthData?.total ?? 0) - lastYearSameMonth.total}
+              </p>
+            </div>
+            <div className="rounded-lg bg-slate-50 p-3">
+              <p className="text-xs text-slate-500">増減率</p>
+              {(() => {
+                const rate = calculateGrowthRate(currentMonthData?.total ?? 0, lastYearSameMonth.total);
+                return (
+                  <p className={`text-xl font-bold ${rate >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {rate > 0 ? '+' : ''}{rate.toFixed(1)}%
+                  </p>
+                );
+              })()}
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b-2 border-slate-200 bg-slate-50">
+                  <th className="whitespace-nowrap px-3 py-2 font-semibold text-slate-600">カテゴリ</th>
+                  <th className="whitespace-nowrap px-3 py-2 text-right font-semibold text-blue-600">{selectedMonth.label}</th>
+                  <th className="whitespace-nowrap px-3 py-2 text-right font-semibold text-slate-500">{lastYearSameMonth.label}</th>
+                  <th className="whitespace-nowrap px-3 py-2 text-right font-semibold text-slate-600">増減</th>
+                  <th className="whitespace-nowrap px-3 py-2 text-right font-semibold text-slate-600">増減率</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allCats.map((cat, idx) => {
+                  const lastYearCat = lastYearSameMonth.categorySummary.find(c => c.categoryId === cat.categoryId);
+                  const lastYearTotal = lastYearCat?.total ?? 0;
+                  const diff = cat.total - lastYearTotal;
+                  const rate = calculateGrowthRate(cat.total, lastYearTotal);
+                  return (
+                    <tr key={cat.categoryId} className={`border-b border-slate-100 transition-colors hover:bg-blue-50/40 ${idx % 2 === 1 ? 'bg-slate-50/50' : ''}`}>
+                      <td className="whitespace-nowrap px-3 py-2 font-medium text-slate-700">{cat.name}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums font-medium text-blue-700">{cat.total}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-slate-500">{lastYearTotal}</td>
+                      <td className={`whitespace-nowrap px-3 py-2 text-right tabular-nums font-medium ${diff >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                        {diff > 0 ? '+' : ''}{diff}
+                      </td>
+                      <td className={`whitespace-nowrap px-3 py-2 text-right tabular-nums ${rate >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                        {lastYearTotal === 0 ? '-' : `${rate > 0 ? '+' : ''}${rate.toFixed(1)}%`}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-slate-300 bg-slate-100 font-bold">
+                  <td className="whitespace-nowrap px-3 py-2.5 text-slate-800">合計</td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-blue-700">{currentMonthData?.total ?? 0}</td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-slate-600">{lastYearSameMonth.total}</td>
+                  <td className={`whitespace-nowrap px-3 py-2.5 text-right tabular-nums ${(currentMonthData?.total ?? 0) - lastYearSameMonth.total >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {(currentMonthData?.total ?? 0) - lastYearSameMonth.total > 0 ? '+' : ''}{(currentMonthData?.total ?? 0) - lastYearSameMonth.total}
+                  </td>
+                  <td className={`whitespace-nowrap px-3 py-2.5 text-right tabular-nums ${calculateGrowthRate(currentMonthData?.total ?? 0, lastYearSameMonth.total) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {lastYearSameMonth.total === 0 ? '-' : `${calculateGrowthRate(currentMonthData?.total ?? 0, lastYearSameMonth.total) > 0 ? '+' : ''}${calculateGrowthRate(currentMonthData?.total ?? 0, lastYearSameMonth.total).toFixed(1)}%`}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
         {/* Category comparison table across months */}
         <div className="rounded-xl bg-white p-6 shadow-sm">
           <h3 className="mb-4 text-base font-semibold text-slate-800">
@@ -423,8 +543,8 @@ export default function Dashboard() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="whitespace-nowrap px-3 py-2 font-semibold text-slate-600">
+                <tr className="border-b-2 border-slate-200 bg-slate-50">
+                  <th className="sticky left-0 z-10 whitespace-nowrap bg-slate-50 px-3 py-2 font-semibold text-slate-600">
                     カテゴリ
                   </th>
                   {comparison.map((m) => (
@@ -432,36 +552,58 @@ export default function Dashboard() {
                       key={m.label}
                       className="whitespace-nowrap px-3 py-2 text-right font-semibold text-slate-600"
                     >
-                      {m.month}月
+                      {m.year === selectedMonth.year ? `${m.month}月` : `${m.year}/${m.month}`}
                     </th>
                   ))}
+                  <th className="whitespace-nowrap px-3 py-2 text-right font-semibold text-slate-600">増減</th>
+                  <th className="whitespace-nowrap px-3 py-2 text-right font-semibold text-slate-600">増減率</th>
                 </tr>
               </thead>
               <tbody>
-                {topCats.map((cat) => (
-                  <tr
-                    key={cat.categoryId}
-                    className="border-b border-slate-100 transition-colors hover:bg-slate-50"
-                  >
-                    <td className="whitespace-nowrap px-3 py-2 font-medium text-slate-700">
-                      {cat.name}
-                    </td>
-                    {comparison.map((m) => {
-                      const found = m.categorySummary.find(
-                        (c) => c.categoryId === cat.categoryId
-                      );
-                      return (
-                        <td
-                          key={m.label}
-                          className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-slate-600"
-                        >
-                          {found?.total ?? 0}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
+                {allCats.map((cat, idx) => {
+                  const firstVal = firstMonth?.categorySummary.find(c => c.categoryId === cat.categoryId)?.total ?? 0;
+                  const lastVal = lastMonth?.categorySummary.find(c => c.categoryId === cat.categoryId)?.total ?? 0;
+                  const diff = lastVal - firstVal;
+                  const rate = calculateGrowthRate(lastVal, firstVal);
+                  return (
+                    <tr key={cat.categoryId} className={`border-b border-slate-100 transition-colors hover:bg-blue-50/40 ${idx % 2 === 1 ? 'bg-slate-50/50' : ''}`}>
+                      <td className="sticky left-0 z-10 whitespace-nowrap bg-inherit px-3 py-2 font-medium text-slate-700">
+                        {cat.name}
+                      </td>
+                      {comparison.map((m) => {
+                        const found = m.categorySummary.find(c => c.categoryId === cat.categoryId);
+                        return (
+                          <td key={m.label} className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-slate-600">
+                            {found?.total ?? 0}
+                          </td>
+                        );
+                      })}
+                      <td className={`whitespace-nowrap px-3 py-2 text-right tabular-nums font-medium ${diff >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                        {diff > 0 ? '+' : ''}{diff}
+                      </td>
+                      <td className={`whitespace-nowrap px-3 py-2 text-right tabular-nums ${rate >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                        {firstVal === 0 ? '-' : `${rate > 0 ? '+' : ''}${rate.toFixed(1)}%`}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-slate-300 bg-slate-100 font-bold">
+                  <td className="sticky left-0 z-10 whitespace-nowrap bg-slate-100 px-3 py-2.5 text-slate-800">合計</td>
+                  {comparison.map((m) => (
+                    <td key={m.label} className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-slate-800">
+                      {m.total}
+                    </td>
+                  ))}
+                  <td className={`whitespace-nowrap px-3 py-2.5 text-right tabular-nums ${(lastMonth?.total ?? 0) - (firstMonth?.total ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {(lastMonth?.total ?? 0) - (firstMonth?.total ?? 0) > 0 ? '+' : ''}{(lastMonth?.total ?? 0) - (firstMonth?.total ?? 0)}
+                  </td>
+                  <td className={`whitespace-nowrap px-3 py-2.5 text-right tabular-nums ${calculateGrowthRate(lastMonth?.total ?? 0, firstMonth?.total ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {(firstMonth?.total ?? 0) === 0 ? '-' : `${calculateGrowthRate(lastMonth?.total ?? 0, firstMonth?.total ?? 0) > 0 ? '+' : ''}${calculateGrowthRate(lastMonth?.total ?? 0, firstMonth?.total ?? 0).toFixed(1)}%`}
+                  </td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         </div>
