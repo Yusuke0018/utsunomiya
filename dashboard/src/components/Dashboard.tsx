@@ -147,6 +147,10 @@ export default function Dashboard() {
     }
   }, [availableMonths, selectedMonth]);
 
+  // ── Refresh trigger (increment to force re-fetch after delete) ──
+  const [refreshKey, setRefreshKey] = useState(0);
+  const triggerRefresh = useCallback(() => setRefreshKey(k => k + 1), []);
+
   // ── Stats state (loaded on selectedMonth change) ─────
   const [stats, setStats] = useState<MonthlyStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -162,7 +166,7 @@ export default function Dashboard() {
       }
     });
     return () => { cancelled = true; };
-  }, [selectedMonth, categoriesLoading, getMonthlyStats]);
+  }, [selectedMonth, categoriesLoading, getMonthlyStats, refreshKey]);
 
   const monthLabel = selectedMonth?.label ?? '';
 
@@ -228,6 +232,7 @@ export default function Dashboard() {
         const res = await fetch(`/api/surveys?date=${date}`, { method: 'DELETE' });
         if (res.ok) {
           setEntries(prev => prev.filter(e => e.date !== date));
+          triggerRefresh();
         } else {
           alert('削除に失敗しました');
         }
