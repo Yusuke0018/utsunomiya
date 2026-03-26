@@ -56,11 +56,14 @@ async function submitToSupabase(config, date, counts, categories) {
   if (records.length === 0) throw new Error('送信するカテゴリがありません。');
 
   // 4. Upsert
-  const res = await fetch(`${config.supabaseUrl}/rest/v1/daily_surveys`, {
-    method: 'POST',
-    headers: { ...headers, Prefer: 'resolution=merge-duplicates' },
-    body: JSON.stringify(records),
-  });
+  const res = await fetch(
+    `${config.supabaseUrl}/rest/v1/daily_surveys?on_conflict=clinic_id,survey_date,category_id`,
+    {
+      method: 'POST',
+      headers: { ...headers, Prefer: 'resolution=merge-duplicates' },
+      body: JSON.stringify(records),
+    }
+  );
 
   if (!res.ok) {
     const body = await res.text().catch(() => '');
