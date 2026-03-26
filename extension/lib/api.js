@@ -113,9 +113,13 @@ async function submitToGAS(config, date, counts) {
     throw new Error('GAS URLが設定されていません。');
   }
 
+  // GAS Web App redirects 302 on POST. Using no-cors to avoid
+  // the redirect converting POST→GET (which would call doGet instead of doPost).
+  // With no-cors we can't read the response, but the POST body reaches doPost.
   const res = await fetch(config.gasUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain' },
     body: JSON.stringify({
       clinic_code: config.clinicCode,
       date: date,
@@ -123,8 +127,7 @@ async function submitToGAS(config, date, counts) {
     }),
   });
 
-  if (!res.ok) {
-    throw new Error(`Google Sheets送信失敗 (${res.status})`);
-  }
+  // no-cors always returns opaque response (status 0), so we can't check res.ok
+  // If fetch itself didn't throw, the request was sent successfully
   return true;
 }
