@@ -37,22 +37,20 @@
     // Remove previous highlights
     clearHighlights();
 
-    // Find the patient list table containing both 患者メモ and 患者氏名
+    // Find the reception table
     const tables = [...document.querySelectorAll('table')];
     const table = tables.find(
-      (t) =>
-        t.innerText.includes('患者メモ') && t.innerText.includes('患者氏名')
+      (t) => t.innerText.includes('患者氏名')
     );
 
     if (!table) {
       return {
         success: false,
-        error:
-          'テーブルが見つかりません。「患者メモ」列と「患者氏名」列を含む受付一覧を表示してください。',
+        error: '受付テーブルが見つかりません。デジカルの受付一覧を表示してください。',
       };
     }
 
-    // Dynamically find the memo column index
+    // Find memo column: try header name first, fallback to index 12
     const headerRow = table.querySelector('tr');
     if (!headerRow) {
       return { success: false, error: 'テーブルのヘッダー行が見つかりません。' };
@@ -61,14 +59,19 @@
     const headers = [...headerRow.querySelectorAll('th, td')].map((cell) =>
       cell.textContent.trim()
     );
-    const memoIndex = headers.findIndex(
-      (h) => h.includes('患者メモ') || h === 'メモ'
+    let memoIndex = headers.findIndex(
+      (h) => h.includes('受付メモ') || h.includes('患者メモ') || h === 'メモ'
     );
+
+    // Fallback: 受付メモは13番目のカラム (index 12)
+    if (memoIndex === -1 && headers.length >= 13) {
+      memoIndex = 12;
+    }
 
     if (memoIndex === -1) {
       return {
         success: false,
-        error: '「患者メモ」列が見つかりません。列のヘッダーを確認してください。',
+        error: '受付メモ列が見つかりません。',
       };
     }
 
@@ -82,7 +85,23 @@
       if (cells.length <= memoIndex) return;
 
       const memoCell = cells[memoIndex];
-      const memo = memoCell?.innerText?.trim() || '';
+
+      // Get memo text: try React fiber (pv.comment) first, fallback to innerText
+      let memo = '';
+      const fiberKey = Object.keys(memoCell).find(k => k.startsWith('__reactFiber'));
+      if (fiberKey) {
+        let fiber = memoCell[fiberKey];
+        while (fiber) {
+          if (fiber.memoizedProps?.pv?.comment) {
+            memo = fiber.memoizedProps.pv.comment;
+            break;
+          }
+          fiber = fiber.return;
+        }
+      }
+      if (!memo) {
+        memo = memoCell?.innerText?.trim() || '';
+      }
 
       // Normalize fullwidth → halfwidth, then match #number patterns
       const normalized = memo
