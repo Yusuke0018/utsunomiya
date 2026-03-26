@@ -256,11 +256,8 @@ export default function Dashboard() {
     if (loading) return <LoadingSpinner />;
     if (entries.length === 0) return <EmptyState />;
 
-    // Chart data - weekdays only
-    const weekdayEntries = entries.filter((e) => {
-      const d = new Date(e.date);
-      return d.getDay() !== 0 && d.getDay() !== 6;
-    });
+    // Show all days that have data
+    const weekdayEntries = entries;
 
     const chartData = weekdayEntries.map((entry) => {
       const row: Record<string, string | number> = {
@@ -322,7 +319,7 @@ export default function Dashboard() {
         {/* Data table */}
         <div className="rounded-xl bg-white p-6 shadow-sm">
           <h3 className="mb-4 text-base font-semibold text-slate-800">
-            日別一覧（営業日のみ）
+            日別一覧
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
