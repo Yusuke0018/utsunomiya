@@ -28,18 +28,27 @@
 
   // ---- Initialisation ----
   async function init() {
-    setTodayDate();
+    await restoreDate();
     await loadConfig();
     await loadCategories();
     bindEvents();
   }
 
-  function setTodayDate() {
-    const now = new Date();
-    const yyyy = now.getFullYear();
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
-    const dd = String(now.getDate()).padStart(2, '0');
-    $surveyDate.value = `${yyyy}-${mm}-${dd}`;
+  async function restoreDate() {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['lastSurveyDate'], (result) => {
+        if (result.lastSurveyDate) {
+          $surveyDate.value = result.lastSurveyDate;
+        } else {
+          const now = new Date();
+          const yyyy = now.getFullYear();
+          const mm = String(now.getMonth() + 1).padStart(2, '0');
+          const dd = String(now.getDate()).padStart(2, '0');
+          $surveyDate.value = `${yyyy}-${mm}-${dd}`;
+        }
+        resolve();
+      });
+    });
   }
 
   async function loadConfig() {
@@ -122,6 +131,9 @@
     $scanBtn.addEventListener('click', handleScan);
     $submitBtn.addEventListener('click', handleSubmit);
     $deleteBtn.addEventListener('click', handleDelete);
+    $surveyDate.addEventListener('change', () => {
+      chrome.storage.local.set({ lastSurveyDate: $surveyDate.value });
+    });
     $openOptions.addEventListener('click', (e) => {
       e.preventDefault();
       chrome.runtime.openOptionsPage();
@@ -153,6 +165,7 @@
         currentCounts = response.counts || {};
         if (response.date) {
           $surveyDate.value = response.date;
+          chrome.storage.local.set({ lastSurveyDate: response.date });
         }
         renderResults();
         const dateLabel = response.date || $surveyDate.value;
