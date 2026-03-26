@@ -59,7 +59,7 @@
           config = {
             supabaseUrl: result.supabaseUrl || 'https://dstucelzcwaihytjllqz.supabase.co',
             supabaseKey: result.supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzdHVjZWx6Y3dhaWh5dGpsbHF6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDQ0MzY5MSwiZXhwIjoyMDkwMDE5NjkxfQ.9pgx54dvpkyED1bRPiv8fffeFuohIdvigU82VKvwMUM',
-            gasUrl: result.gasUrl || '',
+            gasUrl: result.gasUrl || 'https://script.google.com/macros/s/AKfycbym-nnS5YIiG-60-ZSkk-6exzlRqKCJWNwJQRyH6OB35nkyTu7OwUULdhlNvPAt7i67/exec',
             clinicCode: result.clinicCode || 'utsunomiya-la',
           };
           $clinicCode.textContent = config.clinicCode;
