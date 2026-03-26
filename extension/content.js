@@ -84,8 +84,11 @@
       const memoCell = cells[memoIndex];
       const memo = memoCell?.innerText?.trim() || '';
 
-      // Match all #number patterns in the memo (supports multiple tags)
-      const matches = memo.matchAll(/#(\d+)/g);
+      // Normalize fullwidth → halfwidth, then match #number patterns
+      const normalized = memo
+        .replace(/＃/g, '#')
+        .replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+      const matches = normalized.matchAll(/#(\d+)/g);
       let hasMatch = false;
 
       for (const m of matches) {
