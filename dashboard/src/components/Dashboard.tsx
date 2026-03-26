@@ -219,6 +219,22 @@ export default function Dashboard() {
 
     const [entries, setEntries] = useState<DaySurveyEntry[]>([]);
     const [loading, setLoading] = useState(true);
+    const [deleting, setDeleting] = useState<string | null>(null);
+
+    async function handleDeleteDate(date: string) {
+      if (!confirm(`${date} のデータを削除しますか？`)) return;
+      setDeleting(date);
+      try {
+        const res = await fetch(`/api/surveys?date=${date}`, { method: 'DELETE' });
+        if (res.ok) {
+          setEntries(prev => prev.filter(e => e.date !== date));
+        } else {
+          alert('削除に失敗しました');
+        }
+      } finally {
+        setDeleting(null);
+      }
+    }
 
     useEffect(() => {
       let cancelled = false;
@@ -324,6 +340,8 @@ export default function Dashboard() {
                   <th className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-slate-800">
                     合計
                   </th>
+                  <th className="whitespace-nowrap px-2 py-2.5 text-center font-semibold text-slate-400">
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -356,6 +374,15 @@ export default function Dashboard() {
                       <td className="whitespace-nowrap px-3 py-2 text-right font-bold tabular-nums text-slate-900">
                         {total}
                       </td>
+                      <td className="whitespace-nowrap px-2 py-2 text-center">
+                        <button
+                          onClick={() => handleDeleteDate(entry.date)}
+                          disabled={deleting === entry.date}
+                          className="rounded px-2 py-0.5 text-xs text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                        >
+                          {deleting === entry.date ? '...' : '削除'}
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -374,6 +401,7 @@ export default function Dashboard() {
                   <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-blue-700">
                     {monthTotals.grand}
                   </td>
+                  <td />
                 </tr>
               </tfoot>
             </table>
