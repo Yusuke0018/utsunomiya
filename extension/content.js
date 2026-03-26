@@ -50,30 +50,8 @@
       };
     }
 
-    // Find memo column: try header name first, fallback to index 12
-    const headerRow = table.querySelector('tr');
-    if (!headerRow) {
-      return { success: false, error: 'テーブルのヘッダー行が見つかりません。' };
-    }
-
-    const headers = [...headerRow.querySelectorAll('th, td')].map((cell) =>
-      cell.textContent.trim()
-    );
-    let memoIndex = headers.findIndex(
-      (h) => h.includes('受付メモ') || h.includes('患者メモ') || h === 'メモ'
-    );
-
-    // Fallback: 受付メモは13番目のカラム (index 12)
-    if (memoIndex === -1 && headers.length >= 13) {
-      memoIndex = 12;
-    }
-
-    if (memoIndex === -1) {
-      return {
-        success: false,
-        error: '受付メモ列が見つかりません。',
-      };
-    }
+    // 受付メモは13番目のカラム (index 12) 固定
+    const MEMO_INDEX = 12;
 
     // Extract #number tags from each row
     const rows = [...table.querySelectorAll('tr')].slice(1); // skip header
@@ -82,9 +60,9 @@
 
     rows.forEach((row) => {
       const cells = row.querySelectorAll('td');
-      if (cells.length <= memoIndex) return;
+      if (cells.length <= MEMO_INDEX) return;
 
-      const memoCell = cells[memoIndex];
+      const memoCell = cells[MEMO_INDEX];
 
       // Get memo text: try React fiber (pv.comment) first, fallback to innerText
       let memo = '';
